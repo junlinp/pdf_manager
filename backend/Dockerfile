@@ -1,5 +1,6 @@
 FROM node:20-alpine
 WORKDIR /app
+# Install deps from package.json (includes pdf-parse for PDF title extraction)
 COPY package.json ./
 RUN npm install --omit=dev
 COPY . .

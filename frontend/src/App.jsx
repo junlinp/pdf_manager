@@ -65,6 +65,7 @@ export default function App() {
   const [urlError, setUrlError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [duplicateMessage, setDuplicateMessage] = useState('');
 
   const tags = useTags();
   const { list, loading, error, refresh } = useDocuments(search, tagFilter || undefined);
@@ -84,6 +85,7 @@ export default function App() {
       if (!res.ok) throw new Error(data.error || res.statusText);
       setUrlInput('');
       setUrlTitle('');
+      if (data.duplicate) setDuplicateMessage('This PDF is already in the library.');
       refresh();
     } catch (err) {
       setUrlError(err.message);
@@ -103,6 +105,7 @@ export default function App() {
       const res = await fetch(`${API}/documents/upload`, { method: 'POST', body: form });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || res.statusText);
+      if (data.duplicate) setDuplicateMessage('This PDF is already in the library.');
       refresh();
     } catch (err) {
       setUploadError(err.message);
@@ -116,6 +119,13 @@ export default function App() {
     if (!confirm('Remove this document from the library?')) return;
     try {
       const res = await fetch(`${API}/documents/${id}?deleteFile=${deleteFile}`, { method: 'DELETE' });
+      if (res.ok) refresh();
+    } catch (_) {}
+  };
+
+  const handleRefreshTitle = async (id) => {
+    try {
+      const res = await fetch(`${API}/documents/${id}/refresh-title`, { method: 'PATCH' });
       if (res.ok) refresh();
     } catch (_) {}
   };
@@ -169,6 +179,12 @@ export default function App() {
         </div>
         {urlError && <p style={{ margin: '0.5rem 0 0', color: 'var(--danger)', fontSize: '0.875rem' }}>{urlError}</p>}
         {uploadError && <p style={{ margin: '0.5rem 0 0', color: 'var(--danger)', fontSize: '0.875rem' }}>{uploadError}</p>}
+        {duplicateMessage && (
+          <p style={{ margin: '0.5rem 0 0', color: 'var(--muted)', fontSize: '0.875rem' }}>
+            {duplicateMessage}
+            <button type="button" onClick={() => setDuplicateMessage('')} style={{ marginLeft: 8, padding: '0 4px', fontSize: '0.75rem' }}>dismiss</button>
+          </p>
+        )}
       </section>
 
       <section style={{ marginBottom: '1rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -199,47 +215,59 @@ export default function App() {
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {list.map((doc) => (
-            <li
-              key={doc._id}
-              style={{
-                padding: '0.75rem 1rem',
-                marginBottom: 4,
-                background: 'var(--surface)',
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                flexWrap: 'wrap',
-              }}
-            >
-              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                <a href={fileUrl(doc.filePath)} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 500 }}>
-                  {doc.title || doc.filename}
-                </a>
-                <div style={{ fontSize: '0.875rem', color: 'var(--muted)', marginTop: 2 }}>
-                  {doc.filename}
-                  {doc.sourceUrl && <> · from URL</>}
-                  {doc.fileSize != null && <> · {formatSize(doc.fileSize)}</>}
-                  {' · '}{formatDate(doc.addedAt)}
-                </div>
-                {doc.tagIds?.length > 0 && (
-                  <div style={{ marginTop: 4 }}>
-                    {doc.tagIds.map((t) => (
-                      <span key={t._id} style={{ marginRight: 6, fontSize: '0.75rem', padding: '2px 6px', background: 'var(--border)', borderRadius: 4 }}>
-                        {t.name}
-                      </span>
-                    ))}
+            <li key={doc._id} className="doc-card">
+              <div className="doc-card-inner">
+                <div className="doc-info">
+                  <a href={fileUrl(doc.filePath)} target="_blank" rel="noopener noreferrer" className="doc-title-link">
+                    {(doc.title && doc.title.trim()) ? doc.title : doc.filename}
+                  </a>
+                  <div className="doc-meta-grid">
+                    <div className="doc-meta-item" data-field="file">
+                      <span className="doc-meta-label">File</span>
+                      <span className="doc-meta-value" title={doc.filename}>{doc.filename}</span>
+                    </div>
+                    {doc.author && (
+                      <div className="doc-meta-item" data-field="author">
+                        <span className="doc-meta-label">Author</span>
+                        <span className="doc-meta-value" title={doc.author}>{doc.author}</span>
+                      </div>
+                    )}
+                    {doc.publishDate && (
+                      <div className="doc-meta-item" data-field="published">
+                        <span className="doc-meta-label">Published</span>
+                        <span className="doc-meta-value">{doc.publishDate}</span>
+                      </div>
+                    )}
+                    {doc.sourceUrl && (
+                      <div className="doc-meta-item" data-field="source">
+                        <span className="doc-meta-label">Source</span>
+                        <span className="doc-meta-value">From URL</span>
+                      </div>
+                    )}
+                    <div className="doc-meta-item" data-field="added">
+                      <span className="doc-meta-label">Added</span>
+                      <span className="doc-meta-value">{formatDate(doc.addedAt)}</span>
+                    </div>
                   </div>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <a href={fileUrl(doc.filePath)} target="_blank" rel="noopener noreferrer">
-                  <button type="button">Open</button>
-                </a>
-                <button type="button" className="danger" onClick={() => handleDelete(doc._id, true)}>
-                  Delete
-                </button>
+                  {doc.tagIds?.length > 0 && (
+                    <div className="doc-tags">
+                      {doc.tagIds.map((t) => (
+                        <span key={t._id} className="doc-tag">{t.name}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="doc-actions">
+                  <a href={fileUrl(doc.filePath)} target="_blank" rel="noopener noreferrer">
+                    <button type="button">Open</button>
+                  </a>
+                  <button type="button" onClick={() => handleRefreshTitle(doc._id)} title="Extract title, author, and publish date from PDF">
+                    Refresh metadata
+                  </button>
+                  <button type="button" className="danger" onClick={() => handleDelete(doc._id, true)}>
+                    Delete
+                  </button>
+                </div>
               </div>
             </li>
           ))}

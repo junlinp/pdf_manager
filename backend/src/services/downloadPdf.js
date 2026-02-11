@@ -3,9 +3,13 @@ import path from 'path';
 import fs from 'fs/promises';
 import Document from '../models/Document.js';
 import { ensureStoreDir, getStorePath } from '../config/store.js';
+import { getPdfMetadata } from './pdfMetadata.js';
+import { sha256Hex } from '../utils/hash.js';
 
 /**
- * Download PDF from URL, save to store, create Document. Throws on error.
+ * Download PDF from URL, save to store, create Document.
+ * If a document with the same file hash exists, returns { doc: existing, duplicate: true } without saving again.
+ * Otherwise returns the new document.
  */
 export async function downloadPdfFromUrl(url, title) {
   ensureStoreDir();
@@ -33,6 +37,12 @@ export async function downloadPdfFromUrl(url, title) {
   }
 
   const buffer = Buffer.from(response.data);
+  const fileHash = sha256Hex(buffer);
+  const existing = await Document.findOne({ fileHash });
+  if (existing) {
+    return { doc: existing, duplicate: true };
+  }
+
   const suggestedName = title && title.trim() ? title.trim() : path.basename(new URL(url).pathname) || 'document';
   const base = suggestedName.replace(/\.pdf$/i, '');
   const filename = `${base}-${Date.now()}.pdf`;
@@ -46,6 +56,12 @@ export async function downloadPdfFromUrl(url, title) {
     sourceUrl: url,
     filePath: filename,
     fileSize: buffer.length,
+    fileHash,
   });
-  return doc;
+  const meta = await getPdfMetadata(buffer);
+  if (meta.title) doc.title = meta.title;
+  if (meta.author) doc.author = meta.author;
+  if (meta.publishDate) doc.publishDate = meta.publishDate;
+  await doc.save();
+  return { doc, duplicate: false };
 }

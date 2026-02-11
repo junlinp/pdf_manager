@@ -19,7 +19,7 @@ services:
       PDF_STORE_PATH: /app/data/pdf-store
       PORT: 4000
     volumes:
-      - pdf_store:/app/data/pdf-store
+      - ./data/pdf-store:/app/data/pdf-store
     depends_on:
       - mongodb
 
@@ -35,4 +35,3 @@ services:
 
 volumes:
   mongodb_data:
-  pdf_store:
