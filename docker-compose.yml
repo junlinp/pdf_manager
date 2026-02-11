@@ -1,0 +1,38 @@
+services:
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: pdf_manager
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/pdf_manager
+      PDF_STORE_PATH: /app/data/pdf-store
+      PORT: 4000
+    volumes:
+      - pdf_store:/app/data/pdf-store
+    depends_on:
+      - mongodb
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongodb_data:
+  pdf_store:
