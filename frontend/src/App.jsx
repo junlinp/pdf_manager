@@ -49,13 +49,6 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString(undefined, { dateStyle: 'short' });
 }
 
-function formatSize(bytes) {
-  if (bytes == null) return '';
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
 export default function App() {
   const [search, setSearch] = useState('');
   const [tagFilter, setTagFilter] = useState('');
@@ -131,38 +124,42 @@ export default function App() {
   };
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '1.5rem' }}>
-      <header style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 600 }}>PDF Manager</h1>
-        <p style={{ margin: '0.25rem 0 0', color: 'var(--muted)' }}>Add from URL or upload, then browse and open.</p>
+    <div className="app-shell">
+      <header className="app-bar">
+        <div className="app-bar-inner">
+          <div>
+            <h1 className="app-title">PDF Manager</h1>
+            <p className="app-subtitle">Add from URL or upload, then browse and open.</p>
+          </div>
+        </div>
       </header>
 
-      <section style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)' }}>
-        <h2 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Add PDF</h2>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
-          <form onSubmit={handleAddByUrl} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', flex: '1 1 320px' }}>
-            <input
-              type="url"
-              placeholder="https://example.com/document.pdf"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              style={{ flex: '1 1 200px', minWidth: 200 }}
-            />
-            <input
-              type="text"
-              placeholder="Optional title"
-              value={urlTitle}
-              onChange={(e) => setUrlTitle(e.target.value)}
-              style={{ width: 140 }}
-            />
-            <button type="submit" className="primary" disabled={urlLoading}>
-              {urlLoading ? 'Downloading…' : 'Add from URL'}
-            </button>
-          </form>
-          <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+      <main className="app-main">
+        <section className="add-pdf">
+          <h2 className="add-pdf-title">Add PDF</h2>
+          <div className="add-pdf-row">
+            <form onSubmit={handleAddByUrl} className="add-pdf-form">
+              <input
+                type="url"
+                className="input add-pdf-input-url"
+                placeholder="https://example.com/document.pdf"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+              />
+              <input
+                type="text"
+                className="input add-pdf-input-title"
+                placeholder="Optional title"
+                value={urlTitle}
+                onChange={(e) => setUrlTitle(e.target.value)}
+              />
+              <button type="submit" className="btn btn-primary" disabled={urlLoading}>
+                {urlLoading ? 'Adding…' : 'Add from URL'}
+              </button>
+            </form>
             <button
               type="button"
-              className="primary"
+              className="btn btn-primary"
               onClick={() => document.getElementById('file-input').click()}
               disabled={uploading}
             >
@@ -173,106 +170,98 @@ export default function App() {
               type="file"
               accept=".pdf,application/pdf"
               onChange={handleUpload}
-              style={{ display: 'none' }}
+              className="input-file"
             />
-          </span>
+          </div>
+          {urlError && <p className="message-error">{urlError}</p>}
+          {uploadError && <p className="message-error">{uploadError}</p>}
+          {duplicateMessage && (
+            <p className="message-info">
+              {duplicateMessage}
+              <button type="button" className="btn btn-ghost" onClick={() => setDuplicateMessage('')}>
+                Dismiss
+              </button>
+            </p>
+          )}
+        </section>
+
+        <div className="toolbar">
+          <div className="search-wrap">
+            <input
+              type="search"
+              className="input"
+              placeholder="Search by title, filename, notes…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select
+            className="select"
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+            style={{ minWidth: 140 }}
+          >
+            <option value="">All tags</option>
+            {tags.map((t) => (
+              <option key={t._id} value={t._id}>{t.name}</option>
+            ))}
+          </select>
         </div>
-        {urlError && <p style={{ margin: '0.5rem 0 0', color: 'var(--danger)', fontSize: '0.875rem' }}>{urlError}</p>}
-        {uploadError && <p style={{ margin: '0.5rem 0 0', color: 'var(--danger)', fontSize: '0.875rem' }}>{uploadError}</p>}
-        {duplicateMessage && (
-          <p style={{ margin: '0.5rem 0 0', color: 'var(--muted)', fontSize: '0.875rem' }}>
-            {duplicateMessage}
-            <button type="button" onClick={() => setDuplicateMessage('')} style={{ marginLeft: 8, padding: '0 4px', fontSize: '0.75rem' }}>dismiss</button>
-          </p>
-        )}
-      </section>
 
-      <section style={{ marginBottom: '1rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <input
-          type="search"
-          placeholder="Search by title, filename, notes…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ maxWidth: 320, flex: '1 1 200px' }}
-        />
-        <select
-          value={tagFilter}
-          onChange={(e) => setTagFilter(e.target.value)}
-          style={{ padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', minWidth: 140 }}
-        >
-          <option value="">All tags</option>
-          {tags.map((t) => (
-            <option key={t._id} value={t._id}>{t.name}</option>
-          ))}
-        </select>
-      </section>
-
-      {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
-      {loading ? (
-        <p style={{ color: 'var(--muted)' }}>Loading…</p>
-      ) : list.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>No PDFs yet. Add one from a URL or upload a file.</p>
-      ) : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {list.map((doc) => (
-            <li key={doc._id} className="doc-card">
-              <div className="doc-card-inner">
-                <div className="doc-info">
-                  <a href={fileUrl(doc.filePath)} target="_blank" rel="noopener noreferrer" className="doc-title-link">
-                    {(doc.title && doc.title.trim()) ? doc.title : doc.filename}
-                  </a>
-                  <div className="doc-meta-grid">
-                    <div className="doc-meta-item" data-field="file">
-                      <span className="doc-meta-label">File</span>
-                      <span className="doc-meta-value" title={doc.filename}>{doc.filename}</span>
-                    </div>
-                    {doc.author && (
-                      <div className="doc-meta-item" data-field="author">
-                        <span className="doc-meta-label">Author</span>
-                        <span className="doc-meta-value" title={doc.author}>{doc.author}</span>
-                      </div>
-                    )}
-                    {doc.publishDate && (
-                      <div className="doc-meta-item" data-field="published">
-                        <span className="doc-meta-label">Published</span>
-                        <span className="doc-meta-value">{doc.publishDate}</span>
-                      </div>
-                    )}
-                    {doc.sourceUrl && (
-                      <div className="doc-meta-item" data-field="source">
-                        <span className="doc-meta-label">Source</span>
-                        <span className="doc-meta-value">From URL</span>
-                      </div>
-                    )}
-                    <div className="doc-meta-item" data-field="added">
-                      <span className="doc-meta-label">Added</span>
-                      <span className="doc-meta-value">{formatDate(doc.addedAt)}</span>
-                    </div>
+        {error && <p className="message-error">{error}</p>}
+        {loading ? (
+          <div className="loading-state">Loading…</div>
+        ) : list.length === 0 ? (
+          <div className="empty-state">No PDFs yet. Add one from a URL or upload a file.</div>
+        ) : (
+          <ul className="doc-grid">
+            {list.map((doc) => (
+              <li key={doc._id} className="doc-card">
+                <div className="doc-card-header">
+                  <div className="doc-card-icon" aria-hidden>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                      <polyline points="10 9 9 9 8 9" />
+                    </svg>
                   </div>
-                  {doc.tagIds?.length > 0 && (
-                    <div className="doc-tags">
-                      {doc.tagIds.map((t) => (
-                        <span key={t._id} className="doc-tag">{t.name}</span>
-                      ))}
-                    </div>
-                  )}
+                  <h3 className="doc-card-title">
+                    <a href={fileUrl(doc.filePath)} target="_blank" rel="noopener noreferrer" title={(doc.title && doc.title.trim()) ? doc.title : doc.filename}>
+                      {(doc.title && doc.title.trim()) ? doc.title : doc.filename}
+                    </a>
+                  </h3>
                 </div>
-                <div className="doc-actions">
+                <div className="doc-meta">
+                  {doc.author && <span>{doc.author}</span>}
+                  {doc.publishDate && <span>{doc.publishDate}</span>}
+                  <span>{formatDate(doc.addedAt)}</span>
+                  {doc.sourceUrl && <span>From URL</span>}
+                </div>
+                {doc.tagIds?.length > 0 && (
+                  <div className="doc-tags-wrap">
+                    {doc.tagIds.map((t) => (
+                      <span key={t._id} className="doc-tag">{t.name}</span>
+                    ))}
+                  </div>
+                )}
+                <div className="doc-card-actions">
                   <a href={fileUrl(doc.filePath)} target="_blank" rel="noopener noreferrer">
-                    <button type="button">Open</button>
+                    <button type="button" className="btn btn-primary">Open</button>
                   </a>
-                  <button type="button" onClick={() => handleRefreshTitle(doc._id)} title="Extract title, author, and publish date from PDF">
+                  <button type="button" className="btn btn-ghost" onClick={() => handleRefreshTitle(doc._id)} title="Extract title, author, and publish date from PDF">
                     Refresh metadata
                   </button>
-                  <button type="button" className="danger" onClick={() => handleDelete(doc._id, true)}>
+                  <button type="button" className="btn btn-danger" onClick={() => handleDelete(doc._id, true)}>
                     Delete
                   </button>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </main>
     </div>
   );
 }
